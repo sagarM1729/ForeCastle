@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ForeCastle Custom Styles */
+html {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Custom CSS Variables */
+:root {
+  --primary-blue: #2563eb;
+  --primary-blue-hover: #1d4ed8;
+  --secondary-purple: #7c3aed;
+  --text-gray: #374151;
+  --text-light: #6b7280;
+  --background-gray: #f9fafb;
+  --border-gray: #e5e7eb;
+}
+
+/* Custom Component Styles */
+.btn-primary {
+  @apply bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors;
+}
+
+.btn-secondary {
+  @apply bg-gray-200 text-gray-800 px-4 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors;
+}
+
+.card {
+  @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6;
+}
+
+.market-card {
+  @apply bg-white rounded-lg shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow;
+}
+
+/* Trading Interface Styles */
+.trading-interface {
+  @apply bg-white rounded-lg shadow-lg p-6 border border-gray-200;
+}
+
+.price-chart {
+  @apply bg-white rounded-lg p-4 border border-gray-200;
+}
+
+/* Form Styles */
+.form-input {
+  @apply block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500;
+}
+
+.form-label {
+  @apply block text-sm font-medium text-gray-700 mb-1;
+}
+
+.form-error {
+  @apply text-red-600 text-sm mt-1;
+}
+
+/* Animation Utilities */
+.fade-in {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Loading Animation */
+.loading-pulse {
+  @apply animate-pulse bg-gray-200 rounded;
+}
+
+/* Market Category Badges */
+.category-politics {
+  @apply bg-red-100 text-red-800;
+}
+
+.category-sports {
+  @apply bg-green-100 text-green-800;
+}
+
+.category-crypto {
+  @apply bg-orange-100 text-orange-800;
+}
+
+.category-technology {
+  @apply bg-blue-100 text-blue-800;
+}
+
+.category-finance {
+  @apply bg-purple-100 text-purple-800;
+}
+
+.category-entertainment {
+  @apply bg-pink-100 text-pink-800;
+}
+
+/* Responsive Typography */
+@screen sm {
+  h1 {
+    @apply text-4xl;
+  }
+}
+
+@screen md {
+  h1 {
+    @apply text-5xl;
+  }
+}
+
+@screen lg {
+  h1 {
+    @apply text-6xl;
+  }
+}
+
+/* Print Styles */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}

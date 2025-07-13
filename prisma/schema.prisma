@@ -1,0 +1,126 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  walletAddress String @unique
+  username    String?
+  email       String?  @unique
+  avatar      String?
+  reputation  Int      @default(0)
+  totalVolume Decimal  @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  createdMarkets Market[] @relation("MarketCreator")
+  trades         Trade[]
+  positions      Position[]
+  
+  @@map("users")
+}
+
+model Market {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  imageUrl    String?
+  category    String
+  
+  // Market mechanics
+  contractAddress String?
+  endDate        DateTime
+  resolutionDate DateTime?
+  resolved       Boolean  @default(false)
+  outcome        String?  // "YES", "NO", "INVALID"
+  
+  // Trading info
+  totalVolume    Decimal  @default(0)
+  liquidityPool  Decimal  @default(0)
+  yesPrice       Decimal  @default(0.5)
+  noPrice        Decimal  @default(0.5)
+  
+  // Metadata
+  tags           String[]
+  sourceUrl      String?
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  // Relations
+  creator        User     @relation("MarketCreator", fields: [creatorId], references: [id])
+  creatorId      String
+  trades         Trade[]
+  positions      Position[]
+  
+  @@map("markets")
+}
+
+model Trade {
+  id        String   @id @default(cuid())
+  
+  // Trade details
+  side      String   // "YES" or "NO"
+  amount    Decimal
+  price     Decimal
+  shares    Decimal
+  
+  // Transaction info
+  txHash    String?
+  gasUsed   Decimal?
+  
+  createdAt DateTime @default(now())
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  market    Market   @relation(fields: [marketId], references: [id])
+  marketId  String
+  
+  @@map("trades")
+}
+
+model Position {
+  id        String   @id @default(cuid())
+  
+  // Position details
+  side      String   // "YES" or "NO"
+  shares    Decimal
+  avgPrice  Decimal
+  realized  Decimal  @default(0)
+  unrealized Decimal @default(0)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  market    Market   @relation(fields: [marketId], references: [id])
+  marketId  String
+  
+  @@unique([userId, marketId, side])
+  @@map("positions")
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  icon      String?
+  color     String?
+  
+  createdAt DateTime @default(now())
+  
+  @@map("categories")
+}

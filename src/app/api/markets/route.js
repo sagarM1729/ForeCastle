@@ -7,7 +7,7 @@ export async function GET(request) {
     const category = searchParams.get('category')
     const status = searchParams.get('status')
     const search = searchParams.get('search')
-    const sort = searchParams.get('sort') || 'createdAt'
+    const sort = searchParams.get('sort') || 'created_at'
     const order = searchParams.get('order') || 'desc'
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '12')
@@ -21,13 +21,8 @@ export async function GET(request) {
       }
     }
     
-    if (status === 'active') {
-      where.resolved = false
-      where.endDate = { gt: new Date() }
-    } else if (status === 'ended') {
-      where.endDate = { lt: new Date() }
-    } else if (status === 'resolved') {
-      where.resolved = true
+    if (status && status !== 'all') {
+      where.status = status.toUpperCase() // ACTIVE, CLOSED, RESOLVED
     }
     
     // Add search functionality
@@ -47,18 +42,20 @@ export async function GET(request) {
         }
       ]
     }
-    
-    // Build orderBy clause
+
+    // Set up ordering
     const orderBy = {}
-    if (sort === 'volume') {
-      orderBy.totalVolume = order
-    } else if (sort === 'endDate') {
-      orderBy.endDate = order
+    if (sort === 'created_at') {
+      orderBy.created_at = order
+    } else if (sort === 'title') {
+      orderBy.title = order
+    } else if (sort === 'category') {
+      orderBy.category = order
     } else if (sort === 'popularity') {
-      // We'll sort by trade count as a proxy for popularity
+      // Sort by trade count as a proxy for popularity
       orderBy.trades = { _count: order }
     } else {
-      orderBy.createdAt = order
+      orderBy.created_at = order
     }
     
     const markets = await db.market.findMany({
@@ -67,34 +64,48 @@ export async function GET(request) {
         creator: {
           select: {
             id: true,
-            username: true,
-            walletAddress: true,
-            avatar: true
+            wallet_address: true
+          }
+        },
+        options: {
+          select: {
+            id: true,
+            label: true,
+            current_odds: true
           }
         },
         trades: {
           select: {
             id: true,
-            side: true,
             amount: true,
             price: true,
-            createdAt: true,
+            created_at: true,
             user: {
               select: {
-                username: true,
-                walletAddress: true
+                wallet_address: true
               }
             }
           },
           orderBy: {
-            createdAt: 'desc'
+            created_at: 'desc'
           },
           take: 5 // Recent trades for preview
+        },
+        resolution: {
+          select: {
+            winning_option_id: true,
+            resolved_at: true,
+            resolver: {
+              select: {
+                wallet_address: true
+              }
+            }
+          }
         },
         _count: {
           select: {
             trades: true,
-            positions: true
+            options: true
           }
         }
       },
@@ -106,13 +117,13 @@ export async function GET(request) {
     // Enrich markets with calculated fields
     const enrichedMarkets = markets.map(market => ({
       ...market,
-      participants: market._count.positions,
+      participants: new Set(market.trades.map(t => t.user.wallet_address)).size,
       tradesCount: market._count.trades,
-      probability: parseFloat(market.yesPrice),
-      isActive: !market.resolved && new Date(market.endDate) > new Date(),
-      timeRemaining: new Date(market.endDate) - new Date(),
-      trending: market._count.trades > 10 && 
-                new Date(market.createdAt) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+      optionsCount: market._count.options,
+      isActive: market.status === 'ACTIVE',
+      isResolved: market.status === 'RESOLVED',
+      trending: market._count.trades > 5 && 
+                new Date(market.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
     }))
     
     const total = await db.market.count({ where })
@@ -130,10 +141,10 @@ export async function GET(request) {
       stats: {
         totalMarkets: total,
         activeMarkets: await db.market.count({ 
-          where: { resolved: false, endDate: { gt: new Date() } } 
+          where: { status: 'ACTIVE' } 
         }),
         resolvedMarkets: await db.market.count({ 
-          where: { resolved: true } 
+          where: { status: 'RESOLVED' } 
         })
       }
     })
@@ -150,140 +161,88 @@ export async function GET(request) {
     )
   }
 }
-    
+
 export async function POST(request) {
   try {
     const body = await request.json()
+    const { title, description, category, creator_wallet } = body
     
-    // Validation
-    const {
-      title,
-      description,
-      category,
-      endDate,
-      tags,
-      sourceUrl,
-      imageUrl,
-      creatorId,
-      initialLiquidity = 1000
-    } = body
-    
-    if (!title || !description || !category || !endDate || !creatorId) {
+    if (!title || !description || !category || !creator_wallet) {
       return NextResponse.json(
-        { 
+        {
           success: false,
-          error: 'Missing required fields: title, description, category, endDate, creatorId' 
+          error: 'Missing required fields: title, description, category, creator_wallet'
         },
         { status: 400 }
       )
     }
-    
-    // Validate end date is in the future
-    if (new Date(endDate) <= new Date()) {
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'End date must be in the future' 
-        },
-        { status: 400 }
-      )
-    }
-    
-    // Verify creator exists
-    const creator = await db.user.findUnique({
-      where: { id: creatorId }
+
+    // Find or create user based on wallet address
+    let user = await db.user.findUnique({
+      where: { wallet_address: creator_wallet }
     })
-    
-    if (!creator) {
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'Creator not found' 
-        },
-        { status: 404 }
-      )
+
+    if (!user) {
+      user = await db.user.create({
+        data: {
+          wallet_address: creator_wallet
+        }
+      })
     }
-    
+
+    // Create market
     const market = await db.market.create({
       data: {
         title,
         description,
         category,
-        endDate: new Date(endDate),
-        tags: tags || [],
-        sourceUrl,
-        imageUrl,
-        creatorId,
-        liquidityPool: initialLiquidity,
-        yesPrice: 0.5,
-        noPrice: 0.5
+        created_by: user.id,
+        status: 'ACTIVE'
       },
       include: {
         creator: {
           select: {
             id: true,
-            username: true,
-            walletAddress: true,
-            avatar: true
+            wallet_address: true
           }
         }
       }
     })
-    
+
+    // Create default YES/NO options
+    const yesOption = await db.option.create({
+      data: {
+        market_id: market.id,
+        label: 'YES',
+        current_odds: 0.5
+      }
+    })
+
+    const noOption = await db.option.create({
+      data: {
+        market_id: market.id,
+        label: 'NO', 
+        current_odds: 0.5
+      }
+    })
+
     return NextResponse.json({
       success: true,
-      data: market,
+      data: {
+        ...market,
+        options: [yesOption, noOption]
+      },
       message: 'Market created successfully'
     }, { status: 201 })
-    
+
   } catch (error) {
     console.error('Error creating market:', error)
     return NextResponse.json(
-      { 
+      {
         success: false,
         error: 'Failed to create market',
-        details: error.message 
+        details: error.message
       },
-      { status: 500 }
-    )
-  }
-}
-
-export async function POST(request) {
-  try {
-    const body = await request.json()
-    
-    // TODO: Add authentication/authorization
-    // TODO: Validate input with Zod schema
-    
-    const market = await db.market.create({
-      data: {
-        title: body.title,
-        description: body.description,
-        category: body.category,
-        endDate: new Date(body.endDate),
-        tags: body.tags || [],
-        sourceUrl: body.sourceUrl,
-        imageUrl: body.imageUrl,
-        creatorId: body.creatorId, // TODO: Get from authenticated user
-      },
-      include: {
-        creator: {
-          select: {
-            id: true,
-            username: true,
-            walletAddress: true
-          }
-        }
-      }
-    })
-    
-    return NextResponse.json(market, { status: 201 })
-    
-  } catch (error) {
-    console.error('Error creating market:', error)
-    return NextResponse.json(
-      { error: 'Failed to create market' },
       { status: 500 }
     )
   }

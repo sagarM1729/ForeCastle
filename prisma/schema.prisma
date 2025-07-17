@@ -10,117 +10,85 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// 🔑 1. users - Stores wallet addresses
 model User {
-  id          String   @id @default(cuid())
-  walletAddress String @unique
-  username    String?
-  email       String?  @unique
-  avatar      String?
-  reputation  Int      @default(0)
-  totalVolume Decimal  @default(0)
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String   @id @default(cuid())
+  wallet_address String   @unique
+  created_at     DateTime @default(now())
   
   // Relations
   createdMarkets Market[] @relation("MarketCreator")
   trades         Trade[]
-  positions      Position[]
+  resolutions    Resolution[]
   
   @@map("users")
 }
 
+// 📈 2. markets - Market questions & metadata  
 model Market {
   id          String   @id @default(cuid())
   title       String
   description String
-  imageUrl    String?
   category    String
-  
-  // Market mechanics
-  contractAddress String?
-  endDate        DateTime
-  resolutionDate DateTime?
-  resolved       Boolean  @default(false)
-  outcome        String?  // "YES", "NO", "INVALID"
-  
-  // Trading info
-  totalVolume    Decimal  @default(0)
-  liquidityPool  Decimal  @default(0)
-  yesPrice       Decimal  @default(0.5)
-  noPrice        Decimal  @default(0.5)
-  
-  // Metadata
-  tags           String[]
-  sourceUrl      String?
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  status      String   @default("ACTIVE") // ACTIVE, CLOSED, RESOLVED
+  created_by  String
+  created_at  DateTime @default(now())
   
   // Relations
-  creator        User     @relation("MarketCreator", fields: [creatorId], references: [id])
-  creatorId      String
-  trades         Trade[]
-  positions      Position[]
+  creator     User       @relation("MarketCreator", fields: [created_by], references: [id])
+  options     Option[]
+  trades      Trade[]
+  resolution  Resolution?
   
   @@map("markets")
 }
 
-model Trade {
-  id        String   @id @default(cuid())
-  
-  // Trade details
-  side      String   // "YES" or "NO"
-  amount    Decimal
-  price     Decimal
-  shares    Decimal
-  
-  // Transaction info
-  txHash    String?
-  gasUsed   Decimal?
-  
-  createdAt DateTime @default(now())
+// ✅ 3. options - Market outcomes (like YES / NO)
+model Option {
+  id           String  @id @default(cuid())
+  market_id    String
+  label        String  // "YES", "NO", or custom options
+  current_odds Decimal @default(0.5)
   
   // Relations
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  market    Market   @relation(fields: [marketId], references: [id])
-  marketId  String
+  market Market @relation(fields: [market_id], references: [id], onDelete: Cascade)
+  trades Trade[]
+  winningResolutions Resolution[]
+  
+  @@map("options")
+}
+
+// 💰 4. trades - User bets/trades per market
+model Trade {
+  id        String   @id @default(cuid())
+  user_id   String
+  market_id String
+  option_id String
+  amount    Decimal
+  price     Decimal
+  tx_hash   String?
+  created_at DateTime @default(now())
+  
+  // Relations
+  user   User   @relation(fields: [user_id], references: [id])
+  market Market @relation(fields: [market_id], references: [id])
+  option Option @relation(fields: [option_id], references: [id])
   
   @@map("trades")
 }
 
-model Position {
-  id        String   @id @default(cuid())
-  
-  // Position details
-  side      String   // "YES" or "NO"
-  shares    Decimal
-  avgPrice  Decimal
-  realized  Decimal  @default(0)
-  unrealized Decimal @default(0)
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+// 🏁 5. resolutions - Admin or oracle result of market
+model Resolution {
+  id                String   @id @default(cuid())
+  market_id         String   @unique
+  winning_option_id String
+  resolved_by       String
+  resolved_at       DateTime @default(now())
   
   // Relations
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  market    Market   @relation(fields: [marketId], references: [id])
-  marketId  String
+  market         Market @relation(fields: [market_id], references: [id], onDelete: Cascade)
+  winning_option Option @relation(fields: [winning_option_id], references: [id])
+  resolver       User   @relation(fields: [resolved_by], references: [id])
   
-  @@unique([userId, marketId, side])
-  @@map("positions")
-}
-
-model Category {
-  id        String   @id @default(cuid())
-  name      String   @unique
-  slug      String   @unique
-  icon      String?
-  color     String?
-  
-  createdAt DateTime @default(now())
-  
-  @@map("categories")
+  @@map("resolutions")
 }

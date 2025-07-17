@@ -2,66 +2,64 @@
 
 import { motion } from 'framer-motion'
 import Link from 'next/link'
+import { useState, useEffect } from 'react'
 
-// Recent Activity Component
+// Recent Activity Component - Fetches REAL data from AWS PostgreSQL
 export default function RecentActivity() {
-  const activities = [
-    {
-      id: 1,
-      type: 'trade',
-      user: 'CryptoTrader123',
-      action: 'bought YES shares',
-      market: 'Bitcoin $100K by 2025',
-      amount: 250,
-      timestamp: '2 minutes ago',
-      icon: '📈',
-      color: 'text-green-600'
-    },
-    {
-      id: 2,
-      type: 'trade',
-      user: 'PoliticalPundit',
-      action: 'sold NO shares',
-      market: 'US Election Prediction',
-      amount: 150,
-      timestamp: '5 minutes ago',
-      icon: '📉',
-      color: 'text-red-600'
-    },
-    {
-      id: 3,
-      type: 'creation',
-      user: 'MarketMaker',
-      action: 'created new market',
-      market: 'AI AGI by 2030',
-      amount: null,
-      timestamp: '12 minutes ago',
-      icon: '🆕',
-      color: 'text-blue-600'
-    },
-    {
-      id: 4,
-      type: 'comment',
-      user: 'SportsAnalyst',
-      action: 'commented on',
-      market: 'Man City Premier League',
-      amount: null,
-      timestamp: '18 minutes ago',
-      icon: '💬',
-      color: 'text-purple-600'
-    },
-    {
-      id: 5,
-      type: 'resolution',
-      user: 'System',
-      action: 'resolved market',
-      market: 'Q4 GDP Growth',
-      amount: null,
-      timestamp: '1 hour ago',
-      icon: '✅',
-      color: 'text-emerald-600'
+  const [activities, setActivities] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    fetchRecentActivity()
+  }, [])
+
+  const fetchRecentActivity = async () => {
+    try {
+      setIsLoading(true)
+      const response = await fetch('/api/activity')
+      const result = await response.json()
+      
+      if (result.success) {
+        setActivities(result.data)
+      } else {
+        setError(result.error)
+        // Fallback to demo data if API fails
+        setActivities([
+          {
+            id: 'demo-1',
+            type: 'info',
+            user: 'System',
+            action: 'No recent activity',
+            market: 'Create your first market to see activity here!',
+            amount: null,
+            timestamp: 'Just now',
+            icon: '💡',
+            color: 'text-blue-600'
+          }
+        ])
+      }
+    } catch (err) {
+      console.error('Failed to fetch activity:', err)
+      setError('Failed to load activity')
+      // Fallback data
+      setActivities([
+        {
+          id: 'demo-1',
+          type: 'info',
+          user: 'System',
+          action: 'Connect to AWS Database',
+          market: 'Real-time activity will appear here',
+          amount: null,
+          timestamp: 'Just now',
+          icon: '🔗',
+          color: 'text-purple-600'
+        }
+      ])
+    } finally {
+      setIsLoading(false)
     }
-  ]
+  }
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -124,13 +122,24 @@ export default function RecentActivity() {
                 📊
               </motion.span>
               <span>Recent Activity</span>
+              {isLoading && (
+                <motion.span
+                  className="text-sm"
+                  animate={{ opacity: [1, 0.5, 1] }}
+                  transition={{ duration: 1, repeat: Infinity }}
+                >
+                  🔄
+                </motion.span>
+              )}
             </h3>
             <p className="text-purple-100">
-              Live feed of market activities and trades
+              {isLoading ? 'Loading from AWS PostgreSQL...' : 'Live feed from your database'}
             </p>
           </div>
           <motion.div
-            className="w-3 h-3 bg-green-400 rounded-full"
+            className={`w-3 h-3 rounded-full ${
+              error ? 'bg-red-400' : isLoading ? 'bg-yellow-400' : 'bg-green-400'
+            }`}
             animate={{ 
               scale: [1, 1.3, 1],
               opacity: [1, 0.7, 1]
@@ -192,12 +201,18 @@ export default function RecentActivity() {
                     transition={{ delay: index * 0.1 + 0.5 }}
                   >
                     <span>{activity.action} </span>
-                    <Link 
-                      href="/markets/1" 
-                      className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
-                    >
-                      {activity.market}
-                    </Link>
+                    {activity.marketId ? (
+                      <Link 
+                        href={`/markets/${activity.marketId}`} 
+                        className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                      >
+                        {activity.market}
+                      </Link>
+                    ) : (
+                      <span className="font-medium text-gray-700">
+                        {activity.market}
+                      </span>
+                    )}
                   </motion.p>
                   
                   {activity.amount && (
@@ -241,13 +256,18 @@ export default function RecentActivity() {
             className="inline-flex items-center space-x-2 text-blue-600 hover:text-blue-800 font-semibold hover:bg-blue-50 px-4 py-2 rounded-lg transition-all duration-300"
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            onClick={fetchRecentActivity}
           >
-            <span>View All Activity</span>
+            <span>{isLoading ? 'Loading...' : 'Refresh Activity'}</span>
             <motion.span
-              animate={{ x: [0, 3, 0] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
+              animate={{ rotate: isLoading ? 360 : 0, x: isLoading ? 0 : [0, 3, 0] }}
+              transition={{ 
+                duration: isLoading ? 1 : 1.5, 
+                repeat: isLoading ? Infinity : Infinity,
+                ease: isLoading ? "linear" : "easeInOut"
+              }}
             >
-              →
+              {isLoading ? '🔄' : '→'}
             </motion.span>
           </motion.button>
         </motion.div>

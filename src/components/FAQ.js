@@ -20,14 +20,13 @@ export default function FAQ() {
   ]
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-8 border border-gray-200">
-      <h2 className="text-2xl font-bold mb-6">Frequently Asked Questions</h2>
-      
-      <div className="space-y-6">
+    <div className="bg-gray-900/90 backdrop-blur-lg rounded-xl border border-white/10 shadow-2xl p-8">
+      <h2 className="text-3xl font-bold text-white mb-8">Frequently Asked Questions</h2>
+      <div className="space-y-8">
         {faqs.map((faq, index) => (
           <div key={index}>
-            <h3 className="text-lg font-semibold mb-2">{faq.question}</h3>
-            <p className="text-gray-600">{faq.answer}</p>
+            <h3 className="text-xl font-semibold text-orange-400 mb-2">{faq.question}</h3>
+            <p className="text-gray-300 text-lg">{faq.answer}</p>
           </div>
         ))}
       </div>

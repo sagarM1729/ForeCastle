@@ -54,20 +54,22 @@ export default function MarketCard({ market, index = 0 }) {
       className="block"
     >
       <Link href={`/markets/${market.id}`} className="block group">
-        <motion.div className="bg-white rounded-lg shadow-sm border hover:shadow-lg transition-shadow p-6 h-full overflow-hidden">
+        <motion.div className={`market-card ${market.trending ? 'featured' : ''} h-full`}>
           <div className="flex items-start justify-between mb-3">
             <motion.span 
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: (index * 0.1) + 0.2 }}
-              className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                market.category === 'Crypto' ? 'bg-orange-100 text-orange-600' :
-                market.category === 'Technology' ? 'bg-purple-100 text-purple-600' :
-                market.category === 'Space' ? 'bg-blue-100 text-blue-600' :
-                market.category === 'Politics' ? 'bg-red-100 text-red-600' :
-                market.category === 'Sports' ? 'bg-green-100 text-green-600' :
-                'bg-gray-100 text-gray-600'
-              }`}
+              className={`market-card-category ${
+                market.category === 'Crypto' ? 'bg-gradient-to-r from-orange-500 to-yellow-500' :
+                market.category === 'Technology' ? 'bg-gradient-to-r from-purple-500 to-indigo-500' :
+                market.category === 'Tech' ? 'bg-gradient-to-r from-purple-500 to-indigo-500' :
+                market.category === 'Space' ? 'bg-gradient-to-r from-blue-500 to-cyan-500' :
+                market.category === 'Politics' ? 'bg-gradient-to-r from-red-500 to-pink-500' :
+                market.category === 'Sports' ? 'bg-gradient-to-r from-green-500 to-emerald-500' :
+                market.category === 'Test' ? 'bg-gradient-to-r from-gray-500 to-slate-500' :
+                'bg-gradient-to-r from-gray-500 to-gray-600'
+              } text-white`}
             >
               {market.category}
             </motion.span>
@@ -80,7 +82,7 @@ export default function MarketCard({ market, index = 0 }) {
                   type: "spring",
                   stiffness: 200
                 }}
-                className="text-red-500 text-sm"
+                className="trending-fire text-xl"
               >
                 🔥
               </motion.span>
@@ -91,7 +93,7 @@ export default function MarketCard({ market, index = 0 }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: (index * 0.1) + 0.3 }}
-            className="font-semibold text-lg mb-2 text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-2"
+            className="market-card-title line-clamp-2"
           >
             {market.title}
           </motion.h3>
@@ -100,7 +102,7 @@ export default function MarketCard({ market, index = 0 }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: (index * 0.1) + 0.4 }}
-            className="text-gray-600 text-sm mb-4 line-clamp-2"
+            className="text-gray-300 text-sm mb-4 line-clamp-2"
           >
             {market.description}
           </motion.p>
@@ -109,59 +111,69 @@ export default function MarketCard({ market, index = 0 }) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: (index * 0.1) + 0.5 }}
-            className="flex items-center justify-between mb-4"
+            className="market-card-price-section"
           >
-            <motion.div 
-              className="text-center"
-              whileHover={{ scale: 1.05 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              <div className="text-green-600 font-bold text-lg">
-                {(market.yesPrice * 100).toFixed(0)}¢
-              </div>
-              <div className="text-xs text-gray-500">YES</div>
-            </motion.div>
-            
-            <div className="flex-1 mx-4">
-              <div className="bg-gray-200 rounded-full h-2 overflow-hidden">
-                <motion.div 
-                  variants={probabilityVariants}
-                  initial="hidden"
-                  animate="visible"
-                  className="bg-green-500 h-2 rounded-full"
-                ></motion.div>
-              </div>
+            <div className="flex items-center justify-between mb-3">
               <motion.div 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: (index * 0.1) + 0.8 }}
-                className="text-center text-xs text-gray-500 mt-1"
+                className="text-center"
+                whileHover={{ scale: 1.05 }}
+                transition={{ type: "spring", stiffness: 300 }}
               >
-                {(market.probability * 100).toFixed(0)}% chance
+                <div className="market-card-price yes">
+                  {(market.yesPrice * 100).toFixed(0)}¢
+                </div>
+                <div className="text-xs text-gray-400 mt-1">YES</div>
+                <div className="text-xs text-emerald-400 font-medium">
+                  {(market.probability * 100).toFixed(0)}% chance
+                </div>
+              </motion.div>
+              
+              <div className="flex-1 mx-6">
+                <div className="market-card-progress">
+                  <motion.div 
+                    variants={probabilityVariants}
+                    initial="hidden"
+                    animate="visible"
+                    className="market-card-progress-bar"
+                    style={{ width: `${market.probability * 100}%` }}
+                  ></motion.div>
+                </div>
+              </div>
+
+              <motion.div 
+                className="text-center"
+                whileHover={{ scale: 1.05 }}
+                transition={{ type: "spring", stiffness: 300 }}
+              >
+                <div className="market-card-price no">
+                  {(market.noPrice * 100).toFixed(0)}¢
+                </div>
+                <div className="text-xs text-gray-400 mt-1">NO</div>
+                <div className="text-xs text-red-400 font-medium">
+                  {((1 - market.probability) * 100).toFixed(0)}% chance
+                </div>
               </motion.div>
             </div>
-
-            <motion.div 
-              className="text-center"
-              whileHover={{ scale: 1.05 }}
-              transition={{ type: "spring", stiffness: 300 }}
-            >
-              <div className="text-red-600 font-bold text-lg">
-                {(market.noPrice * 100).toFixed(0)}¢
-              </div>
-              <div className="text-xs text-gray-500">NO</div>
-            </motion.div>
           </motion.div>
 
           <motion.div 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: (index * 0.1) + 0.6 }}
-            className="flex items-center justify-between text-sm text-gray-500 border-t pt-3"
+            className="market-card-stats"
           >
-            <span>💰 ${formatNumber(market.totalVolume)}</span>
-            <span>👥 {market.participants}</span>
-            <span>📅 {formatDateShort(market.endDate)}</span>
+            <div className="market-card-stat">
+              <span>💰</span>
+              <span>${formatNumber(market.totalVolume)}</span>
+            </div>
+            <div className="market-card-stat">
+              <span>👥</span>
+              <span>{market.participants}</span>
+            </div>
+            <div className="market-card-stat">
+              <span>📅</span>
+              <span>{formatDateShort(market.endDate)}</span>
+            </div>
           </motion.div>
         </motion.div>
       </Link>

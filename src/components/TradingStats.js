@@ -116,118 +116,104 @@ export default function TradingStats() {
   }
 
   return (
-    <motion.div
-      className="container mx-auto px-4"
-      variants={containerVariants}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, margin: "-100px" }}
-    >
+    <div className="container mx-auto px-6">
+      {/* Section Header */}
       <motion.div
-        className="grid grid-cols-2 lg:grid-cols-4 gap-6"
+        className="text-center mb-16"
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
+      >
+        <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 backdrop-blur-sm border border-green-500/30 text-green-300 rounded-full text-sm font-semibold mb-4">
+          📊 Live Statistics
+        </div>
+        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+          <span className="bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+            Platform Overview
+          </span>
+        </h2>
+        <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
+          Real-time insights into our growing prediction market ecosystem.
+        </p>
+      </motion.div>
+
+      {/* Stats Grid */}
+      <motion.div
+        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8"
         variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-100px" }}
       >
         {stats.map((stat, index) => (
           <motion.div
             key={stat.label}
             variants={cardVariants}
-            whileHover={hoverVariants}
+            whileHover={{ 
+              scale: 1.02,
+              y: -8,
+              transition: { duration: 0.3 }
+            }}
             className="group"
           >
-            <motion.div className="relative overflow-hidden bg-white rounded-xl shadow-lg border border-gray-100 p-6 text-center cursor-pointer">
-              {/* Gradient Background */}
-              <motion.div 
-                className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${stat.gradient}`}
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: 1 }}
-                transition={{ delay: index * 0.2 + 0.5, duration: 0.8 }}
-              />
+            <div className="bg-gray-900/90 backdrop-blur-sm rounded-xl shadow-2xl hover:shadow-xl transition-all duration-300 p-8 border border-gray-700/50 hover:border-gray-600/70 h-full text-center">
               
               {/* Icon */}
               <motion.div
-                className="text-3xl mb-3"
-                animate={{ 
-                  rotate: [0, 10, -10, 0],
-                  scale: [1, 1.1, 1]
-                }}
-                transition={{ 
-                  duration: 3,
-                  repeat: Infinity,
-                  delay: index * 0.5
+                className="text-4xl mb-4"
+                whileHover={{ 
+                  scale: 1.1,
+                  rotate: [0, -5, 5, 0],
+                  transition: { duration: 0.4 }
                 }}
               >
                 {stat.icon}
               </motion.div>
-              
+
               {/* Value */}
-              <motion.h3
-                className={`text-4xl font-bold mb-2 bg-gradient-to-r ${stat.gradient} bg-clip-text text-transparent`}
-                initial={{ opacity: 0, scale: 0.5 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.2 + 0.3, duration: 0.6 }}
-              >
-                <CountUpNumber value={stat.value} prefix={stat.prefix} duration={2 + index * 0.5} />
-              </motion.h3>
-              
-              {/* Label */}
-              <motion.p
-                className="text-gray-600 mb-3 font-medium"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: index * 0.2 + 0.4 }}
-              >
-                {stat.label}
-              </motion.p>
-              
-              {/* Change */}
               <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.2 + 0.6 }}
-                className="inline-flex items-center space-x-1"
+                className="text-3xl font-bold text-white mb-2"
+                initial={{ opacity: 0, scale: 0.5 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.1 + 0.3, duration: 0.6 }}
               >
-                <motion.span
-                  className="text-green-600 text-sm font-semibold flex items-center space-x-1"
-                  whileHover={{ scale: 1.1 }}
-                >
-                  <motion.span
-                    animate={{ y: [-2, 2, -2] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                  >
-                    ↗️
-                  </motion.span>
-                  <span>{stat.change}</span>
-                </motion.span>
+                <CountUpNumber value={stat.value} prefix={stat.prefix} />
               </motion.div>
 
-              {/* Hover Glow Effect */}
-              <motion.div
-                className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-20 transition-opacity duration-300"
-                style={{
-                  background: `linear-gradient(135deg, ${stat.gradient.replace('from-', '').replace(' to-', ', ')})`,
-                  filter: 'blur(20px)',
-                  transform: 'scale(1.1)',
-                  zIndex: -1
-                }}
-              />
-              
-              {/* Sparkle Effects */}
-              <motion.div
-                className="absolute top-2 right-2 w-2 h-2 bg-yellow-400 rounded-full opacity-0 group-hover:opacity-100"
-                animate={{ 
-                  scale: [0, 1, 0],
-                  rotate: [0, 180, 360]
-                }}
-                transition={{ 
-                  duration: 2,
-                  repeat: Infinity,
-                  delay: index * 0.3
-                }}
-              />
-            </motion.div>
+              {/* Label */}
+              <div className="text-lg font-semibold text-gray-300 mb-3">
+                {stat.label}
+              </div>
+
+              {/* Change Indicator */}
+              <div className="flex items-center justify-center space-x-1">
+                <motion.span
+                  className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold text-white bg-gradient-to-r ${stat.gradient}`}
+                  whileHover={{ scale: 1.05 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  📈 {stat.change}
+                </motion.span>
+              </div>
+            </div>
           </motion.div>
         ))}
       </motion.div>
-    </motion.div>
+
+      {/* Additional Info */}
+      <motion.div
+        className="text-center mt-16"
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.8, duration: 0.6 }}
+      >
+        <p className="text-gray-300 text-lg">
+          📈 Data updates in real-time • 🔒 All transactions are secure • ⚡ Lightning-fast execution
+        </p>
+      </motion.div>
+    </div>
   )
 }

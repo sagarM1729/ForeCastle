@@ -2,18 +2,18 @@
 
 export default function About() {
   return (
-    <div className="bg-white rounded-lg shadow-md p-8 border border-gray-200">
-      <h2 className="text-2xl font-bold mb-6">About ForeCastle</h2>
+    <div className="bg-gray-900/90 backdrop-blur-lg rounded-xl border border-white/10 p-8 shadow-2xl">
+      <h2 className="text-2xl font-bold mb-6 text-white">About ForeCastle</h2>
       
       <div className="prose max-w-none">
-        <p className="mb-4">
+        <p className="mb-4 text-gray-300 leading-relaxed">
           ForeCastle is a decentralized prediction market platform that allows users to create, 
           trade, and resolve markets on future events. Built on blockchain technology, we provide 
           transparent, secure, and non-custodial prediction markets.
         </p>
         
-        <h3 className="text-xl font-semibold mb-3">Key Features</h3>
-        <ul className="list-disc pl-6 mb-6">
+        <h3 className="text-xl font-semibold mb-3 text-white">Key Features</h3>
+        <ul className="list-disc pl-6 mb-6 text-gray-300 space-y-1">
           <li>Decentralized market creation and trading</li>
           <li>Smart contract-based resolution</li>
           <li>Non-custodial wallet integration</li>
@@ -22,8 +22,8 @@ export default function About() {
           <li>Cross-platform accessibility</li>
         </ul>
         
-        <h3 className="text-xl font-semibold mb-3">How It Works</h3>
-        <p className="mb-4">
+        <h3 className="text-xl font-semibold mb-3 text-white">How It Works</h3>
+        <p className="mb-4 text-gray-300 leading-relaxed">
           Users can create prediction markets on any future event, from political elections 
           to sports outcomes to cryptocurrency prices. Other users can then trade on these 
           markets, with prices reflecting the crowd's prediction of the event outcome.
@@ -54,14 +54,14 @@ export function FAQ() {
   ]
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-8 border border-gray-200">
-      <h2 className="text-2xl font-bold mb-6">Frequently Asked Questions</h2>
+    <div className="bg-gray-900/90 backdrop-blur-lg rounded-xl border border-white/10 p-8 shadow-2xl">
+      <h2 className="text-2xl font-bold mb-6 text-white">Frequently Asked Questions</h2>
       
       <div className="space-y-6">
         {faqs.map((faq, index) => (
-          <div key={index}>
-            <h3 className="text-lg font-semibold mb-2">{faq.question}</h3>
-            <p className="text-gray-600">{faq.answer}</p>
+          <div key={index} className="pb-6 border-b border-gray-700/50 last:border-b-0">
+            <h3 className="text-lg font-semibold mb-2 text-white">{faq.question}</h3>
+            <p className="text-gray-300 leading-relaxed">{faq.answer}</p>
           </div>
         ))}
       </div>

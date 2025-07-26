@@ -64,126 +64,131 @@ export default function MarketCategories() {
   const cardVariants = {
     hidden: { 
       opacity: 0, 
-      y: 30,
-      scale: 0.9
+      y: 40,
+      scale: 0.95
     },
     visible: {
       opacity: 1,
       y: 0,
       scale: 1,
       transition: {
-        duration: 0.6,
+        duration: 0.8,
         ease: [0.25, 0.46, 0.45, 0.94]
       }
     }
   }
 
-  const hoverVariants = {
-    scale: 1.05,
-    y: -5,
-    transition: {
-      duration: 0.3,
-      ease: "easeOut"
-    }
-  }
-
-  const iconVariants = {
-    hover: {
-      scale: 1.2,
-      rotate: [0, -10, 10, 0],
-      transition: {
-        duration: 0.5,
-        ease: "easeInOut"
-      }
-    }
-  }
-
   return (
-    <motion.div
-      className="container mx-auto px-4"
-      variants={containerVariants}
-      initial="hidden"
-      whileInView="visible"
-      viewport={{ once: true, margin: "-50px" }}
-    >
+    <div className="container mx-auto px-6">
+      {/* Section Header */}
+      <motion.div
+        className="text-center mb-16"
+        initial={{ opacity: 0, y: 40 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8, ease: [0.25, 0.46, 0.45, 0.94] }}
+      >
+        <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500/20 to-purple-500/20 backdrop-blur-sm border border-blue-500/30 text-blue-300 rounded-full text-sm font-semibold mb-4">
+          📂 Categories
+        </div>
+        <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
+          <span className="bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+            Explore by Category
+          </span>
+        </h2>
+        <p className="text-xl text-gray-300 max-w-3xl mx-auto leading-relaxed">
+          Discover markets across different topics and find the predictions that interest you most.
+        </p>
+      </motion.div>
+
+      {/* Categories Grid */}
       <motion.div
         className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-6"
         variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-100px" }}
       >
         {categories.map((category, index) => (
           <motion.div
             key={category.name}
             variants={cardVariants}
-            whileHover={hoverVariants}
+            whileHover={{ 
+              scale: 1.02,
+              y: -8,
+              transition: { duration: 0.3 }
+            }}
             className="group"
           >
             <Link href={`/markets?category=${category.name.toLowerCase()}`}>
-              <motion.div className="relative overflow-hidden rounded-xl bg-white shadow-lg border border-gray-100 p-6 text-center cursor-pointer h-full">
-                {/* Gradient Background */}
-                <motion.div 
-                  className={`absolute inset-0 bg-gradient-to-br ${category.gradient} opacity-0 group-hover:opacity-10 transition-opacity duration-300`}
-                />
+              <div className="bg-gray-900/90 backdrop-blur-sm rounded-xl shadow-2xl hover:shadow-xl transition-all duration-300 p-6 border border-gray-700/50 hover:border-gray-600/70 h-full text-center">
                 
                 {/* Icon */}
                 <motion.div
-                  className="text-5xl mb-4"
-                  variants={iconVariants}
-                  whileHover="hover"
+                  className="text-4xl mb-4"
+                  whileHover={{ 
+                    scale: 1.1,
+                    rotate: [0, -5, 5, 0],
+                    transition: { duration: 0.4 }
+                  }}
                 >
                   {category.icon}
                 </motion.div>
                 
-                {/* Category Name */}
-                <motion.h3
-                  className="font-bold text-lg mb-2 text-gray-900 group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-purple-600 group-hover:bg-clip-text group-hover:text-transparent transition-all duration-300"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: index * 0.1 + 0.3 }}
-                >
-                  {category.name}
-                </motion.h3>
+                {/* Category Badge */}
+                <div className="mb-3">
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-semibold text-white bg-gradient-to-r ${category.gradient}`}>
+                    {category.name}
+                  </span>
+                </div>
                 
                 {/* Description */}
-                <motion.p
-                  className="text-sm text-gray-500 mb-3"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: index * 0.1 + 0.4 }}
-                >
+                <p className="text-sm text-gray-300 mb-3 font-medium">
                   {category.description}
-                </motion.p>
+                </p>
                 
-                {/* Count Badge */}
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.1 + 0.5 }}
-                  className="inline-block"
-                >
-                  <motion.span
-                    className={`px-3 py-1 rounded-full text-sm font-semibold text-white bg-gradient-to-r ${category.gradient} shadow-sm`}
-                    whileHover={{ scale: 1.1 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    {category.count} markets
-                  </motion.span>
-                </motion.div>
-
-                {/* Hover Glow Effect */}
-                <motion.div
-                  className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300"
-                  style={{
-                    background: `linear-gradient(135deg, ${category.gradient.replace('from-', '').replace(' to-', ', ')})`,
-                    filter: 'blur(20px)',
-                    transform: 'scale(1.1)',
-                    zIndex: -1
-                  }}
-                />
-              </motion.div>
+                {/* Count */}
+                <div className="flex items-center justify-center space-x-1 text-gray-400">
+                  <span className="text-xs">📊</span>
+                  <span className="text-sm font-medium">{category.count} markets</span>
+                </div>
+              </div>
             </Link>
           </motion.div>
         ))}
       </motion.div>
-    </motion.div>
+
+      {/* Call to Action */}
+      <motion.div
+        className="text-center mt-16"
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ delay: 0.8, duration: 0.6 }}
+      >
+        <motion.div
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <Link
+            href="/markets"
+            className="inline-flex items-center space-x-3 bg-gradient-to-r from-orange-500 to-pink-600 text-white px-10 py-4 rounded-xl font-semibold text-lg shadow-2xl hover:shadow-orange-500/25 transition-all duration-300"
+          >
+            <span className="text-xl">🔍</span>
+            <span>View All Markets</span>
+            <motion.svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              animate={{ x: [0, 3, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity }}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </motion.svg>
+          </Link>
+        </motion.div>
+      </motion.div>
+    </div>
   )
 }

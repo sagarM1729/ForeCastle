@@ -51,11 +51,12 @@ export async function GET(request) {
       orderBy.title = order
     } else if (sort === 'category') {
       orderBy.category = order
-    } else if (sort === 'popularity') {
-      // Sort by trade count as a proxy for popularity
+    } else if (sort === 'popularity' || sort === 'volume') {
+      // Sort by trade count as a proxy for popularity/volume
       orderBy.trades = { _count: order }
     } else {
-      orderBy.created_at = order
+      // Default: newest first
+      orderBy.created_at = 'desc'
     }
     
     const markets = await db.market.findMany({
@@ -115,16 +116,33 @@ export async function GET(request) {
     })
     
     // Enrich markets with calculated fields
-    const enrichedMarkets = markets.map(market => ({
-      ...market,
-      participants: new Set(market.trades.map(t => t.user.wallet_address)).size,
-      tradesCount: market._count.trades,
-      optionsCount: market._count.options,
-      isActive: market.status === 'ACTIVE',
-      isResolved: market.status === 'RESOLVED',
-      trending: market._count.trades > 5 && 
-                new Date(market.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-    }))
+    const enrichedMarkets = markets.map(market => {
+      // Calculate probability from YES option
+      const yesOption = market.options.find(opt => opt.label === 'YES')
+      const probability = yesOption ? yesOption.current_odds : 0.5
+      const yesPrice = probability
+      const noPrice = 1 - probability
+      const totalVolume = market.trades.reduce((sum, trade) => sum + trade.amount, 0)
+      const participants = new Set(market.trades.map(t => t.user.wallet_address)).size
+      
+      return {
+        ...market,
+        probability,
+        yesPrice,
+        noPrice,
+        totalVolume,
+        participants,
+        tradesCount: market._count.trades,
+        optionsCount: market._count.options,
+        isActive: market.status === 'ACTIVE',
+        isResolved: market.status === 'RESOLVED',
+        trending: market._count.trades > 5 && 
+                  new Date(market.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
+        // Add missing fields for display
+        endDate: market.end_date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        tags: [market.category]
+      }
+    })
     
     const total = await db.market.count({ where })
     
@@ -164,10 +182,15 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    console.log('POST /api/markets - Request received')
+    
     const body = await request.json()
+    console.log('Request body:', body)
+    
     const { title, description, category, creator_wallet } = body
     
     if (!title || !description || !category || !creator_wallet) {
+      console.error('Missing required fields:', { title: !!title, description: !!description, category: !!category, creator_wallet: !!creator_wallet })
       return NextResponse.json(
         {
           success: false,
@@ -177,20 +200,26 @@ export async function POST(request) {
       )
     }
 
+    console.log('Finding/creating user for wallet:', creator_wallet)
+    
     // Find or create user based on wallet address
     let user = await db.user.findUnique({
       where: { wallet_address: creator_wallet }
     })
 
     if (!user) {
+      console.log('Creating new user for wallet:', creator_wallet)
       user = await db.user.create({
         data: {
           wallet_address: creator_wallet
         }
       })
     }
+    
+    console.log('User found/created:', user.id)
 
     // Create market
+    console.log('Creating market with data:', { title, description, category, created_by: user.id })
     const market = await db.market.create({
       data: {
         title,

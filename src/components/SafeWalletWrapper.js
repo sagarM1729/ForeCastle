@@ -2,48 +2,40 @@
 
 import { useState, useEffect } from 'react'
 
-// Component to safely render wallet-related components only when needed
-export function SafeWalletWrapper({ children }) {
-  const [canRenderWallet, setCanRenderWallet] = useState(false)
-  const [userInitiated, setUserInitiated] = useState(false)
+// Safe wrapper component to handle wallet-related errors gracefully
+export default function SafeWalletWrapper({ children, fallback = null }) {
+  const [hasError, setHasError] = useState(false)
 
   useEffect(() => {
-    // Only enable wallet rendering after user interaction
-    const handleUserInteraction = () => {
-      if (!userInitiated) {
-        setUserInitiated(true)
-        setTimeout(() => setCanRenderWallet(true), 100)
-      }
-    }
+    // Reset error state on component mount
+    setHasError(false)
+  }, [])
 
-    // Listen for any user interaction before enabling wallet
-    document.addEventListener('click', handleUserInteraction, { once: true })
-    document.addEventListener('keydown', handleUserInteraction, { once: true })
-    document.addEventListener('touchstart', handleUserInteraction, { once: true })
-
-    return () => {
-      document.removeEventListener('click', handleUserInteraction)
-      document.removeEventListener('keydown', handleUserInteraction)
-      document.removeEventListener('touchstart', handleUserInteraction)
-    }
-  }, [userInitiated])
-
-  // Provide a fallback if wallet can't render
-  if (!canRenderWallet) {
+  if (hasError) {
     return (
-      <button 
-        onClick={() => {
-          setUserInitiated(true)
-          setCanRenderWallet(true)
-        }}
-        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-semibold"
-      >
-        Connect Wallet
-      </button>
+      <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+        <p className="text-yellow-800">
+          Wallet connection error. Please refresh the page.
+        </p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-2 px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700"
+        >
+          Refresh Page
+        </button>
+      </div>
     )
   }
 
-  return children
+  try {
+    return children
+  } catch (error) {
+    console.error('SafeWalletWrapper caught error:', error)
+    setHasError(true)
+    return fallback || (
+      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+        <p className="text-red-800">Something went wrong. Please try again.</p>
+      </div>
+    )
+  }
 }
-
-export default SafeWalletWrapper

@@ -2,6 +2,7 @@
 
 import { motion } from 'framer-motion'
 import MarketCard from './MarketCard'
+import Loader from './Loader'
 
 // Market Grid Component
 export default function MarketGrid({ markets = [] }) {
@@ -44,12 +45,12 @@ export default function MarketGrid({ markets = [] }) {
             rotate: { duration: 2, repeat: Infinity, ease: "linear" },
             scale: { duration: 1, repeat: Infinity, ease: "easeInOut" }
           }}
-          className="mx-auto mb-4 w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center"
+          className="mx-auto mb-4 w-16 h-16 rounded-full bg-gradient-to-r from-orange-500 to-pink-600 flex items-center justify-center"
         >
           <span className="text-white text-xl">🏰</span>
         </motion.div>
-        <h3 className="text-xl font-semibold text-gray-700 mb-2">No Markets Found</h3>
-        <p className="text-gray-500">Try adjusting your filters or check back later for new markets</p>
+        <h3 className="text-xl font-semibold text-white mb-2">No Markets Found</h3>
+        <p className="text-gray-300">Try adjusting your filters or check back later for new markets</p>
       </motion.div>
     )
   }
@@ -80,7 +81,7 @@ export default function MarketGrid({ markets = [] }) {
 export function LoadingSpinner() {
   return (
     <div className="flex justify-center items-center py-12">
-      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <Loader text="Loading Markets" size="medium" />
     </div>
   )
 }

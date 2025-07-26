@@ -50,8 +50,9 @@ export async function POST(request) {
       const market = await tx.market.findUnique({
         where: { id: marketId },
         include: {
+          options: true,
           trades: {
-            orderBy: { createdAt: 'desc' },
+            orderBy: { created_at: 'desc' },
             take: 100 // For price calculation
           }
         }
@@ -61,55 +62,84 @@ export async function POST(request) {
         throw new Error('Market not found')
       }
       
-      if (market.resolved) {
+      if (market.status === 'RESOLVED') {
         throw new Error('Market is already resolved')
       }
       
-      if (new Date(market.endDate) <= new Date()) {
-        throw new Error('Market has ended')
-      }
-      
-      // Calculate current price using simple AMM
-      const currentYesPrice = parseFloat(market.yesPrice)
-      const currentNoPrice = parseFloat(market.noPrice)
-      const currentPrice = side === 'YES' ? currentYesPrice : currentNoPrice
-      
-      // Check slippage protection
-      if (maxPrice && currentPrice > maxPrice) {
-        throw new Error(`Price ${currentPrice.toFixed(4)} exceeds maximum price ${maxPrice}`)
-      }
-      
-      // Calculate shares received
-      const shares = amount / currentPrice
-      const tradeFee = amount * 0.01 // 1% trading fee
-      const netAmount = amount - tradeFee
-      
-      // Verify user exists
-      const user = await tx.user.findUnique({
-        where: { id: userId }
+      // Find or create user based on wallet address
+      let user = await tx.user.findUnique({
+        where: { wallet_address: userId }
       })
       
       if (!user) {
-        throw new Error('User not found')
+        user = await tx.user.create({
+          data: {
+            wallet_address: userId
+          }
+        })
       }
+      
+      // Find the option (YES/NO)
+      const option = market.options.find(opt => opt.label === side)
+      if (!option) {
+        throw new Error(`Option ${side} not found for this market`)
+      }
+      
+      // Calculate current price using improved AMM with price impact prediction
+      const currentTrades = market.trades
+      
+      // Get current volumes
+      const currentYesVolume = currentTrades
+        .filter(t => {
+          const tradeOption = market.options.find(opt => opt.id === t.option_id)
+          return tradeOption?.label === 'YES'
+        })
+        .reduce((sum, t) => sum + parseFloat(t.amount), 0)
+      
+      const currentNoVolume = currentTrades
+        .filter(t => {
+          const tradeOption = market.options.find(opt => opt.id === t.option_id)
+          return tradeOption?.label === 'NO'
+        })
+        .reduce((sum, t) => sum + parseFloat(t.amount), 0)
+      
+      const liquidityConstant = 100 // Liquidity constant
+      const currentYesPool = currentYesVolume + liquidityConstant
+      const currentNoPool = currentNoVolume + liquidityConstant
+      const currentTotalPool = currentYesPool + currentNoPool
+      
+      // Calculate current price (what user will pay)
+      const currentPrice = side === 'YES' ? 
+        (currentYesPool + amount) / (currentTotalPool + amount) :
+        (currentNoPool + amount) / (currentTotalPool + amount)
+      
+      // Ensure price is within reasonable bounds
+      const finalPrice = Math.max(0.05, Math.min(0.95, currentPrice))
+      
+      // Check slippage protection
+      if (maxPrice && finalPrice > maxPrice) {
+        throw new Error(`Price ${finalPrice.toFixed(4)} exceeds maximum price ${maxPrice}`)
+      }
+      
+      // Calculate shares received
+      const shares = amount / finalPrice
+      const tradeFee = amount * 0.01 // 1% trading fee
+      const netAmount = amount - tradeFee
       
       // Create the trade
       const trade = await tx.trade.create({
         data: {
-          userId,
-          marketId,
-          side,
+          user_id: user.id,
+          market_id: marketId,
+          option_id: option.id,
           amount: netAmount,
-          price: currentPrice,
-          shares: shares
+          price: finalPrice
         },
         include: {
           user: {
             select: {
               id: true,
-              username: true,
-              walletAddress: true,
-              avatar: true
+              wallet_address: true
             }
           },
           market: {
@@ -118,91 +148,73 @@ export async function POST(request) {
               title: true,
               category: true
             }
+          },
+          option: {
+            select: {
+              id: true,
+              label: true
+            }
           }
         }
       })
       
-      // Update or create user position
-      const existingPosition = await tx.position.findUnique({
-        where: {
-          userId_marketId_side: {
-            userId,
-            marketId,
-            side
-          }
-        }
-      })
+      // Calculate new odds using improved AMM formula with liquidity consideration
+      const allTrades = [...market.trades, trade]
       
-      if (existingPosition) {
-        // Update existing position with weighted average
-        const existingShares = parseFloat(existingPosition.shares)
-        const existingPrice = parseFloat(existingPosition.avgPrice)
-        const newTotalShares = existingShares + shares
-        const newAvgPrice = ((existingShares * existingPrice) + (shares * currentPrice)) / newTotalShares
-        
-        await tx.position.update({
-          where: { id: existingPosition.id },
-          data: {
-            shares: newTotalShares,
-            avgPrice: newAvgPrice
-          }
+      // Calculate total volume for each side
+      const yesVolume = allTrades
+        .filter(t => {
+          const tradeOption = market.options.find(opt => opt.id === t.option_id)
+          return tradeOption?.label === 'YES'
         })
-      } else {
-        // Create new position
-        await tx.position.create({
-          data: {
-            userId,
-            marketId,
-            side,
-            shares: shares,
-            avgPrice: currentPrice
-          }
+        .reduce((sum, t) => sum + parseFloat(t.amount), 0)
+      
+      const noVolume = allTrades
+        .filter(t => {
+          const tradeOption = market.options.find(opt => opt.id === t.option_id)
+          return tradeOption?.label === 'NO'
+        })
+        .reduce((sum, t) => sum + parseFloat(t.amount), 0)
+      
+      // Improved AMM formula with liquidity smoothing
+      const totalVolume = yesVolume + noVolume
+      const liquidityK = 100 // Liquidity constant - higher means less price impact
+      
+      // Use constant product formula with liquidity pools
+      const yesPool = yesVolume + liquidityK
+      const noPool = noVolume + liquidityK
+      const totalPool = yesPool + noPool
+      
+      // Calculate probability based on pool ratios with smoothing
+      let newYesOdds = yesPool / totalPool
+      
+      // Add some momentum based on recent trades (last 10 trades)
+      const recentTrades = allTrades.slice(-10)
+      const recentYesTrades = recentTrades.filter(t => {
+        const tradeOption = market.options.find(opt => opt.id === t.option_id)
+        return tradeOption?.label === 'YES'
+      }).length
+      
+      const momentum = (recentYesTrades / Math.max(1, recentTrades.length) - 0.5) * 0.1 // 10% momentum factor
+      newYesOdds = Math.max(0.05, Math.min(0.95, newYesOdds + momentum))
+      
+      const newNoOdds = 1 - newYesOdds
+      
+      // Update option odds
+      for (const opt of market.options) {
+        const newOdds = opt.label === 'YES' ? newYesOdds : newNoOdds
+        await tx.option.update({
+          where: { id: opt.id },
+          data: { current_odds: newOdds }
         })
       }
-      
-      // Calculate new market prices using AMM formula
-      const allTrades = [...market.trades, trade]
-      const yesShares = allTrades
-        .filter(t => t.side === 'YES')
-        .reduce((sum, t) => sum + parseFloat(t.shares), 0)
-      const noShares = allTrades
-        .filter(t => t.side === 'NO')
-        .reduce((sum, t) => sum + parseFloat(t.shares), 0)
-      
-      const totalShares = yesShares + noShares
-      const newYesPrice = totalShares > 0 ? Math.max(0.01, Math.min(0.99, yesShares / totalShares)) : 0.5
-      const newNoPrice = 1 - newYesPrice
-      
-      // Update market statistics
-      await tx.market.update({
-        where: { id: marketId },
-        data: {
-          totalVolume: {
-            increment: netAmount
-          },
-          yesPrice: newYesPrice,
-          noPrice: newNoPrice,
-          liquidityPool: {
-            increment: tradeFee // Trading fees go to liquidity pool
-          }
-        }
-      })
-      
-      // Update user stats
-      await tx.user.update({
-        where: { id: userId },
-        data: {
-          totalVolume: {
-            increment: netAmount
-          }
-        }
-      })
       
       return {
         ...trade,
         fee: tradeFee,
-        newPrice: side === 'YES' ? newYesPrice : newNoPrice,
-        sharesReceived: shares
+        newPrice: finalPrice,
+        sharesReceived: shares,
+        side: option.label
       }
     })
     
@@ -236,11 +248,11 @@ export async function GET(request) {
     const where = {}
     
     if (marketId) {
-      where.marketId = marketId
+      where.market_id = marketId
     }
     
     if (userId) {
-      where.userId = userId
+      where.user_id = userId
     }
     
     const trades = await db.trade.findMany({
@@ -255,13 +267,18 @@ export async function GET(request) {
         user: {
           select: {
             id: true,
-            username: true,
-            walletAddress: true
+            wallet_address: true
+          }
+        },
+        option: {
+          select: {
+            id: true,
+            label: true
           }
         }
       },
       orderBy: {
-        createdAt: 'desc'
+        created_at: 'desc'
       },
       skip: (page - 1) * limit,
       take: limit
@@ -278,8 +295,7 @@ export async function GET(request) {
         total,
         pages: Math.ceil(total / limit),
         hasMore: page * limit < total
-      },
-      stats
+      }
     })
     
   } catch (error) {

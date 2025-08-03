@@ -8,6 +8,7 @@ export async function GET(request, { params }) {
     const { searchParams } = new URL(request.url)
     const timeframe = searchParams.get('timeframe') || '7d' // 1h, 24h, 7d, 30d, all
     const interval = searchParams.get('interval') || 'hour' // minute, hour, day
+    const noGrouping = searchParams.get('noGrouping') === 'true' // If true, don't group trades by time interval
     
     // Calculate date range based on timeframe
     let startDate = new Date()
@@ -69,6 +70,16 @@ export async function GET(request, { params }) {
           trades_count: 0
         })
       }
+    } else if (noGrouping) {
+      // For no grouping, just use each trade directly (useful after a new trade is made)
+      trades.forEach(trade => {
+        priceHistory.push({
+          timestamp: new Date(trade.created_at).toISOString(),
+          price: parseFloat(trade.price),
+          volume: parseFloat(trade.amount),
+          trades_count: 1
+        })
+      })
     } else {
       // Group trades by intervals
       const groupedTrades = {}

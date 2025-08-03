@@ -110,15 +110,26 @@ export default function MarketChart({ marketId }) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [timeframe, setTimeframe] = useState('7d')
+  // Add a refreshKey state to force rerenders when trades happen
+  const [refreshKey, setRefreshKey] = useState(0)
+
+  // Debug logging
+  useEffect(() => {
+    console.log('MarketChart: Component mounted with marketId:', marketId)
+  }, [marketId])
 
   useEffect(() => {
     if (!marketId) return
+    
+    console.log('MarketChart: Effect triggered with refreshKey:', refreshKey)
     
     async function fetchPriceData() {
       setLoading(true)
       setError(null)
       try {
-        const res = await fetch(`/api/markets/${marketId}/prices?timeframe=${timeframe}&interval=hour`)
+        // Use a smaller interval (minute) after a trade to show more immediate changes
+        // The cache busting timestamp is crucial to force a fresh fetch
+        const res = await fetch(`/api/markets/${marketId}/prices?timeframe=${timeframe}&interval=minute&noGrouping=true&_t=${Date.now()}`)
         if (!res.ok) throw new Error('Failed to fetch price data')
         const data = await res.json()
         setPriceData(data.data)
@@ -131,7 +142,45 @@ export default function MarketChart({ marketId }) {
     }
 
     fetchPriceData()
-  }, [marketId, timeframe])
+
+    // Listen for trade completion events to refresh chart
+    const handleTradeComplete = (event) => {
+      console.log('MarketChart: Received marketTradeComplete event', {
+        eventMarketId: event.detail?.marketId,
+        currentMarketId: marketId,
+        eventDetail: event.detail
+      })
+      
+      if (event.detail && event.detail.marketId === marketId) {
+        console.log('MarketChart: Market IDs match, refreshing chart...')
+        
+        // Increment refresh key to force component to fully rerender
+        setRefreshKey(prevKey => prevKey + 1)
+        
+        // Force a direct fetch to the database to get latest price
+        setTimeout(() => {
+          fetchPriceData()
+          // Fetch again after 2 seconds to ensure we get updated data
+          // This handles the case where database updates might take time to reflect
+          setTimeout(fetchPriceData, 2000)
+        }, 500)
+      } else {
+        console.log('MarketChart: Market IDs do not match, skipping refresh')
+      }
+    }
+
+    if (typeof window !== 'undefined') {
+      console.log('MarketChart: Adding event listener for marketId:', marketId)
+      window.addEventListener('marketTradeComplete', handleTradeComplete)
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        console.log('MarketChart: Removing event listener for marketId:', marketId)
+        window.removeEventListener('marketTradeComplete', handleTradeComplete)
+      }
+    }
+  }, [marketId, timeframe, refreshKey])
 
   const timeframeOptions = [
     { value: '24h', label: '24H' },
